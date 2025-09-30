@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Text;
 using System.Windows;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -28,6 +29,37 @@ public partial class App
         app.UseDefaultFiles();
         app.UseStaticFiles();
         app.UseRouting();
+        // Local handler used for both root and catch-all routes.
+        IResult HandleGet(HttpContext ctx)
+        {
+            var path = ctx.Request.Path.HasValue ? ctx.Request.Path.Value! : "/";
+            var queryDict = ctx.Request.Query.ToDictionary(k => k.Key, v => (string)v.Value);
+            var sb = new StringBuilder();
+            sb.AppendLine($"Received GET {path}{ctx.Request.QueryString}");
+            if (queryDict.Count == 0)
+            {
+                sb.AppendLine("(no query parameters)");
+            }
+            else
+            {
+                foreach (var kv in queryDict)
+                {
+                    sb.AppendLine($"{kv.Key} = {kv.Value}");
+                }
+            }
+
+            // Log into the GUI writer.
+            tw.WriteLine(sb.ToString());
+
+            // Return the same info as JSON.
+            return Results.Bytes("ok"u8.ToArray(), "text/plain");
+        }
+        
+        // Map root
+        app.MapGet("/", (HttpContext ctx) => HandleGet(ctx));
+        // Map any other GET request (catch-all)
+        app.MapGet("/{**catchall}", (HttpContext ctx) => HandleGet(ctx));
+
         // Start the app so server features (including addresses) are populated.
         app.StartAsync().GetAwaiter().GetResult();
         // Get bound addresses from the server features.
