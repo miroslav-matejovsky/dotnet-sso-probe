@@ -1,5 +1,11 @@
 # .NET SSO Probe
 
+## Keycloak Setup
+
+1. In Keycloak, create a new realm named `sso-probe`.
+2. Create a new client named `dotnet-sso-web-probe` with default settings.
+3. Set the Valid Redirect URIs to `http://localhost:5000/*`.
+
 ## Web Application
 
 A simple web application to demonstrate SSO with Keycloak.

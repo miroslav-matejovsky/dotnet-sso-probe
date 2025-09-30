@@ -1,0 +1,152 @@
+﻿<!-- index.html (simplified) -->
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Login</title>
+    <style>
+        body { font-family: system-ui, Segoe UI, Arial, sans-serif; margin:20px; }
+        h1 { font-size:1.2rem; margin:0 0 1rem 0; }
+        button { padding:8px 14px; font-size:14px; cursor:pointer; }
+        #status { margin-top:12px; font-size:14px; }
+        #debugLog { width:100%; height:240px; margin-top:20px; font:12px/1.4 Consolas, monospace; padding:8px; box-sizing:border-box; resize:vertical; background:#111; color:#f2f2f2; border:1px solid #444; border-radius:4px; }
+        #controls { margin-top:8px; display:flex; gap:8px; }
+    </style>
+</head>
+<body>
+<h3>Keycloak Authentication</h3>
+<p>To change keycloak settings run this program with<p>
+<p style="margin:0; white-space:nowrap; overflow:auto;"><code>./web.exe --Keycloak:Url &quot;http://localhost:9090&quot; --Keycloak:Realm &quot;prod&quot; --Keycloak:ClientId &quot;my-client&quot;</code></p>
+<div id="controls">
+    <button id="loginWithKeycloak">Login</button>
+    <button id="logoutWithKeycloak">Logout</button>
+</div>
+
+<div id="status"></div>
+<textarea id="debugLog" readonly placeholder="Debug log..." aria-label="Debug log"></textarea>
+
+<script type="module">
+    import Keycloak from './js/keycloak-26.2.0.js';
+
+    // --- Minimal logging ---
+    const logBox = document.getElementById('debugLog');
+    function log(...parts) {
+        const time = new Date().toISOString().slice(11,23); // HH:MM:SS.mmm (UTC)
+        const line = `[${time}] ` + parts.map(p => format(p)).join(' ');
+        logBox.value += line + '\n';
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+    function format(v) {
+        if (v instanceof Error) return v.message;
+        if (typeof v === 'object') { try { return JSON.stringify(v); } catch { return '[object]'; } }
+        return String(v);
+    }
+
+    // --- Load Keycloak config from localhost endpoint ---
+    async function loadKeycloakConfig() {
+        try {
+            const configUrl = new URL('config', window.location.href).toString();
+            const res = await fetch(configUrl, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`);
+            const cfg = await res.json();
+            log('Loaded Keycloak config from', configUrl, cfg);
+            return cfg;
+        } catch (e) {
+            log('Failed to load config', e);
+            return null;
+        }
+    }
+
+    const cfg = await loadKeycloakConfig();
+    if (!cfg) {
+        log('Keycloak configuration not available on /config path. Initialization stopped.');
+        document.getElementById('status').textContent = 'Configuration error. See debug log.';
+        throw new Error('Missing Keycloak configuration');
+    }
+    if (!cfg.url || !cfg.realm || !cfg.clientId) {
+        log('Keycloak configuration is incomplete:', cfg);
+        document.getElementById('status').textContent = 'Configuration error. See debug log.';
+        throw new Error('Incomplete Keycloak configuration');
+    }
+
+    // proceed only when cfg is present
+    const keycloak = new Keycloak({
+        url: cfg.url,
+        realm: cfg.realm,
+        clientId: cfg.clientId
+    });
+
+    log('Keycloak instance created.');
+
+    try {
+        log('Initializing Keycloak...');
+        const authenticated = await keycloak.init();
+        if (authenticated) {
+            log('User is authenticated');
+            // Print available JWTs to the debug log (access token and id token)
+            const accessToken = keycloak.token ?? null;
+            const idToken = keycloak.idToken ?? null;
+            if (accessToken) log('Access Token (JWT):', accessToken);
+            if (idToken) log('ID Token (JWT):', idToken);
+            document.getElementById('status').textContent = 'Authenticated';
+        } else {
+            log('User is not authenticated');
+        }} catch (error) {
+        log('Failed to initialize adapter:', error);
+    }
+
+    const loginBtn = document.getElementById('loginWithKeycloak');
+    const logoutBtn = document.getElementById('logoutWithKeycloak');
+
+    loginBtn.onclick = async () => {
+        log('Login button clicked');
+        try {
+            await keycloak.login();
+            log('Login success');
+            const accessToken = keycloak.token ?? null;
+            const idToken = keycloak.idToken ?? null;
+            if (accessToken) log('Access Token (JWT):', accessToken);
+            if (idToken) log('ID Token (JWT):', idToken);
+            document.getElementById('status').textContent = 'Authenticated';
+        } catch (err) {
+            log('Login failed', err);
+            document.getElementById('status').textContent = 'Login failed';
+        }
+    };
+
+    logoutBtn.onclick = async () => {
+        log('Logout clicked');
+        try {
+            await keycloak.logout();
+            log('Logout triggered');
+            document.getElementById('status').textContent = 'Logged out';
+        } catch (e) {
+            log('Logout failed', e);
+        }
+    };
+    
+    // Basic handlers (optional)
+    keycloak.onAuthSuccess = () => {
+        log('onAuthSuccess');
+        const accessToken = keycloak.token ?? null;
+        const idToken = keycloak.idToken ?? null;
+        if (accessToken) log('Access Token (JWT):', accessToken);
+        if (idToken) log('ID Token (JWT):', idToken);
+    };
+    keycloak.onAuthError = e => log('onAuthError', e);
+    keycloak.onAuthLogout = () => {
+        log('onAuthLogout');
+        document.getElementById('status').textContent = 'Logged out';
+    };
+    keycloak.onTokenExpired = () => {
+        log('Token expired -> attempting refresh');
+        keycloak.updateToken(30).then(r => log('Refresh done. Refreshed=', r)).catch(e => log('Refresh failed', e));
+    };
+
+    // Expose for quick console debugging
+    window._kc = keycloak;
+    window._log = log;
+</script>
+</body>
+</html>
