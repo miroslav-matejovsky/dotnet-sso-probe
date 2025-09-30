@@ -28,8 +28,6 @@ public partial class App
         app.UseDefaultFiles();
         app.UseStaticFiles();
         app.UseRouting();
-        app.MapGet("/info", () => "Vissim SSO Beacon.");
-     
         // Start the app so server features (including addresses) are populated.
         app.StartAsync().GetAwaiter().GetResult();
         // Get bound addresses from the server features.
