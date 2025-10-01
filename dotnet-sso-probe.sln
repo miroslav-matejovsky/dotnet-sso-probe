@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dotnet-sso-web-probe", "dotnet-sso-web-probe\dotnet-sso-web-probe.csproj", "{F4720912-4AFF-4320-9EBF-BD11B4743B12}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dotnet-sso-wpf-probe", "dotnet-sso-wpf-probe\dotnet-sso-wpf-probe.csproj", "{DA020D4B-4DE4-4C52-9AA5-6388649CDC58}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dotnet-sso-wpf-probe", "dotnet-sso-wpf-probe\dotnet-sso-wpf-probe.csproj", "{20275440-835D-4473-B3C8-ED2CD2B264F5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,9 +14,9 @@ Global
 		{F4720912-4AFF-4320-9EBF-BD11B4743B12}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4720912-4AFF-4320-9EBF-BD11B4743B12}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4720912-4AFF-4320-9EBF-BD11B4743B12}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DA020D4B-4DE4-4C52-9AA5-6388649CDC58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DA020D4B-4DE4-4C52-9AA5-6388649CDC58}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DA020D4B-4DE4-4C52-9AA5-6388649CDC58}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DA020D4B-4DE4-4C52-9AA5-6388649CDC58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20275440-835D-4473-B3C8-ED2CD2B264F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20275440-835D-4473-B3C8-ED2CD2B264F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20275440-835D-4473-B3C8-ED2CD2B264F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20275440-835D-4473-B3C8-ED2CD2B264F5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
