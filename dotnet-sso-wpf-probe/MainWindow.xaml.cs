@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Identity.Client;
@@ -32,47 +34,56 @@ namespace dotnet_sso_wpf_probe
         {
             Log.Information("Login clicked");
 
+            var clientId = ClientIdTextBox.Text?.Trim();
+            if (string.IsNullOrEmpty(clientId))
+            {
+                Log.Error("Client ID is empty");
+                StatusTextBlock.Text = "Please enter Client ID";
+                return;
+            }
+
             var scopes = new[] { "User.Read" };
 
             BrokerOptions options = new BrokerOptions(BrokerOptions.OperatingSystems.Windows);
-            options.Title = "My Awesome Application";
+            options.Title = ".NET SSO WPF Probe";
 
             var wih = new System.Windows.Interop.WindowInteropHelper(this);
             var hWnd = wih.Handle;
-            
+
             IPublicClientApplication app =
-                PublicClientApplicationBuilder.Create("YOUR_CLIENT_ID")
+                PublicClientApplicationBuilder.Create(clientId)
                     .WithDefaultRedirectUri()
                     .WithParentActivityOrWindow(() => hWnd)
                     .WithBroker(options)
                     .Build();
 
             AuthenticationResult result = null;
-            
+
             // Try to use the previously signed-in account from the cache
             IEnumerable<IAccount> accounts = await app.GetAccountsAsync();
             IAccount existingAccount = accounts.FirstOrDefault();
 
             try
-            {    
+            {
                 if (existingAccount != null)
                 {
                     result = await app.AcquireTokenSilent(scopes, existingAccount).ExecuteAsync();
                 }
                 // Next, try to sign in silently with the account that the user is signed into Windows
                 else
-                {    
+                {
                     result = await app.AcquireTokenSilent(scopes, PublicClientApplication.OperatingSystemAccount)
                         .ExecuteAsync();
                 }
             }
-// Can't get a token silently, go interactive
+            // Can't get a token silently, go interactive
             catch (MsalUiRequiredException ex)
             {
                 try
                 {
                     result = await app.AcquireTokenInteractive(scopes).ExecuteAsync();
-                } catch (Exception iex)
+                }
+                catch (Exception iex)
                 {
                     Log.Error("Interactive authentication failed: {Error}", iex.Message);
                     StatusTextBlock.Text = "Authentication failed";
