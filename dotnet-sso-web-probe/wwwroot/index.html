@@ -16,8 +16,6 @@
 </head>
 <body>
 <h3>Keycloak Authentication</h3>
-<p>To change keycloak settings run this program with<p>
-<p style="margin:0; white-space:nowrap; overflow:auto;"><code>./web.exe --Keycloak:Url &quot;http://localhost:9090&quot; --Keycloak:Realm &quot;prod&quot; --Keycloak:ClientId &quot;my-client&quot;</code></p>
 <div id="controls">
     <button id="loginWithKeycloak">Login</button>
     <button id="logoutWithKeycloak">Logout</button>
@@ -26,6 +24,9 @@
 <div id="status"></div>
 <textarea id="debugLog" readonly placeholder="Debug log..." aria-label="Debug log"></textarea>
 
+<p>To change keycloak settings run this program with<p>
+<p style="margin:0; white-space:nowrap; overflow:auto;"><code>./web.exe --Keycloak:Url &quot;your_url&quot; --Keycloak:Realm &quot;your_realm&quot; --Keycloak:ClientId &quot;your_client_id&quot;</code></p>
+<p>or set these env variables: Keycloak__Url, Keycloak__Realm, Keycloak__ClientId </p>
 <script type="module">
     import Keycloak from './js/keycloak-26.2.0.js';
 

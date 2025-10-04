@@ -1,5 +1,7 @@
 # .NET SSO Probe
 
+Web and WPF applications demonstrating Single Sign-On (SSO) with Keycloak.
+
 ## Keycloak Setup
 
 1. In Keycloak, create a new realm named `sso-probe`.
