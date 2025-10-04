@@ -51,6 +51,129 @@
         logBox.value += line + '\n';
         logBox.scrollTop = logBox.scrollHeight;
     }
+    // Network logger - place right after the existing `log(...)` function
+    (function () {
+        const maskAuth = true;             // set to false to include raw Authorization headers
+        const maxBodyLength = 2000;        // truncate long bodies
+
+        function trunc(s) {
+            if (s == null) return s;
+            return (s.length > maxBodyLength) ? s.slice(0, maxBodyLength) + '...[truncated]' : s;
+        }
+
+        function maskHeaderValue(name, value) {
+            if (!value) return value;
+            if (maskAuth && name.toLowerCase() === 'authorization') {
+                return value.startsWith('Bearer ') ? 'Bearer [REDACTED]' : '[REDACTED]';
+            }
+            return value;
+        }
+
+        function headersToObject(headers) {
+            const obj = {};
+            try {
+                if (headers && typeof headers.forEach === 'function') {
+                    headers.forEach((v, k) => obj[k] = maskHeaderValue(k, v));
+                } else if (headers && typeof headers === 'string') {
+                    headers.split('\r\n').forEach(line => {
+                        const i = line.indexOf(':');
+                        if (i > 0) obj[line.slice(0, i).trim().toLowerCase()] = maskHeaderValue(line.slice(0, i).trim(), line.slice(i+1).trim());
+                    });
+                }
+            } catch {}
+            return obj;
+        }
+
+        // Wrap fetch
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = async function(input, init) {
+            try {
+                const method = (init && init.method) || (input && input.method) || 'GET';
+                const url = (typeof input === 'string') ? input : (input && input.url) || '';
+                // Try to read request headers/body
+                let reqHeaders = {};
+                if (input && input.headers) reqHeaders = headersToObject(input.headers);
+                if (init && init.headers) reqHeaders = Object.assign(reqHeaders, headersToObject(new Headers(init.headers)));
+                let reqBody = null;
+                try {
+                    if (typeof input !== 'string' && input instanceof Request) {
+                        const clone = input.clone();
+                        reqBody = await clone.text().catch(() => null);
+                    } else if (init && init.body) {
+                        reqBody = (typeof init.body === 'string') ? init.body : JSON.stringify(init.body);
+                    }
+                } catch {}
+                log('NET >>>', method, url, { headers: reqHeaders, body: trunc(reqBody) });
+
+                const response = await originalFetch(input, init);
+                const cloned = response.clone();
+                let resText = null;
+                try { resText = await cloned.text(); } catch {}
+                const resHeaders = headersToObject(cloned.headers);
+                log('NET <<<', response.status, response.statusText, url, { headers: resHeaders, body: trunc(resText) });
+
+                return response;
+            } catch (e) {
+                log('NET ERROR (fetch)', e);
+                // fallback to original to avoid breaking app
+                return originalFetch(input, init);
+            }
+        };
+
+        // Wrap XMLHttpRequest
+        const XHR = window.XMLHttpRequest;
+        function WrappedXHR() {
+            const xhr = new XHR();
+            let method = null, url = null, reqHeaders = {};
+
+            const origOpen = xhr.open;
+            xhr.open = function(m, u, ...rest) {
+                method = m;
+                url = u;
+                return origOpen.call(xhr, m, u, ...rest);
+            };
+
+            const origSetRequestHeader = xhr.setRequestHeader;
+            xhr.setRequestHeader = function(k, v) {
+                reqHeaders[k.toLowerCase()] = maskHeaderValue(k, v);
+                return origSetRequestHeader.call(xhr, k, v);
+            };
+
+            const origSend = xhr.send;
+            xhr.send = function(body) {
+                try {
+                    log('NET >>>', method, url, { headers: reqHeaders, body: trunc((typeof body === 'string') ? body : (body ? '[non-string body]' : null)) });
+                } catch {}
+                return origSend.call(xhr, body);
+            };
+
+            xhr.addEventListener('readystatechange', function () {
+                try {
+                    if (xhr.readyState === 4) {
+                        const rawHeaders = xhr.getAllResponseHeaders();
+                        const resHeaders = headersToObject(rawHeaders);
+                        const resBody = (() => {
+                            try { return xhr.responseText; } catch { return null; }
+                        })();
+                        log('NET <<<', xhr.status, xhr.statusText, url, { headers: resHeaders, body: trunc(resBody) });
+                    }
+                } catch (e) {
+                    log('NET ERROR (XHR readystate)', e);
+                }
+            });
+
+            return xhr;
+        }
+        WrappedXHR.UNSENT = XHR.UNSENT;
+        WrappedXHR.OPENED = XHR.OPENED;
+        WrappedXHR.HEADERS_RECEIVED = XHR.HEADERS_RECEIVED;
+        WrappedXHR.LOADING = XHR.LOADING;
+        WrappedXHR.DONE = XHR.DONE;
+
+        window.XMLHttpRequest = WrappedXHR;
+        log('Network logger installed (fetch + XHR). Authorization masked:', maskAuth);
+    })();
+    
 
     // Base64url decode helper
     function base64UrlDecode(str) {
