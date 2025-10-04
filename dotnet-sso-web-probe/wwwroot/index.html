@@ -1,5 +1,4 @@
-﻿<!-- index.html (simplified) -->
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -10,7 +9,21 @@
         h1 { font-size:1.2rem; margin:0 0 1rem 0; }
         button { padding:8px 14px; font-size:14px; cursor:pointer; }
         #status { margin-top:12px; font-size:14px; }
-        #debugLog { width:100%; height:240px; margin-top:20px; font:12px/1.4 Consolas, monospace; padding:8px; box-sizing:border-box; resize:vertical; background:#111; color:#f2f2f2; border:1px solid #444; border-radius:4px; }
+        #debugLog {
+            width: 100%;
+            height: 420px;         /* increased height */
+            min-height: 240px;     /* keep a sensible minimum */
+            max-height: 60vh;      /* responsive cap for smaller viewports */
+            margin-top: 20px;
+            font: 12px/1.4 Consolas, monospace;
+            padding: 8px;
+            box-sizing: border-box;
+            resize: vertical;
+            background: #111;
+            color: #f2f2f2;
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
         #controls { margin-top:8px; display:flex; gap:8px; }
     </style>
 </head>
@@ -25,7 +38,7 @@
 <textarea id="debugLog" readonly placeholder="Debug log..." aria-label="Debug log"></textarea>
 
 <p>To change keycloak settings run this program with<p>
-<p style="margin:0; white-space:nowrap; overflow:auto;"><code>./web.exe --Keycloak:Url &quot;your_url&quot; --Keycloak:Realm &quot;your_realm&quot; --Keycloak:ClientId &quot;your_client_id&quot;</code></p>
+<code>./web.exe --Keycloak:Url &quot;your_url&quot; --Keycloak:Realm &quot;your_realm&quot; --Keycloak:ClientId &quot;your_client_id&quot;</code>
 <p>or set these env variables: Keycloak__Url, Keycloak__Realm, Keycloak__ClientId </p>
 <script type="module">
     import Keycloak from './js/keycloak-26.2.0.js';
@@ -38,9 +51,51 @@
         logBox.value += line + '\n';
         logBox.scrollTop = logBox.scrollHeight;
     }
+
+    // Base64url decode helper
+    function base64UrlDecode(str) {
+        if (!str) return null;
+        str = str.replace(/-/g, '+').replace(/_/g, '/');
+        while (str.length % 4) str += '=';
+        try {
+            const binary = atob(str);
+            // Preserve UTF-8 properly
+            return decodeURIComponent(Array.prototype.map.call(binary, c => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+        } catch {
+            return null;
+        }
+    }
+
+    // Parse JWT into { header, payload, signature }
+    function parseJwt(token) {
+        const jwtRegex = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+        if (!jwtRegex.test(token)) throw new Error('Not a JWT');
+        const parts = token.split('.');
+        const headerJson = base64UrlDecode(parts[0]) || '{}';
+        const payloadJson = base64UrlDecode(parts[1]) || '{}';
+        let header, payload;
+        try { header = JSON.parse(headerJson); } catch { header = headerJson; }
+        try { payload = JSON.parse(payloadJson); } catch { payload = payloadJson; }
+        return { header, payload, signature: parts[2] };
+    }
+
     function format(v) {
         if (v instanceof Error) return v.message;
         if (typeof v === 'object') { try { return JSON.stringify(v); } catch { return '[object]'; } }
+        if (typeof v === 'string') {
+            // detect JWT and pretty-print decoded JSON
+            const jwtRegex = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+            if (jwtRegex.test(v)) {
+                try {
+                    const parsed = parseJwt(v);
+                    return '\n' + JSON.stringify(parsed, null, 2);
+                } catch {
+                    // fall through to return raw string
+                }
+            }
+        }
         return String(v);
     }
 
@@ -126,7 +181,7 @@
             log('Logout failed', e);
         }
     };
-    
+
     // Basic handlers (optional)
     keycloak.onAuthSuccess = () => {
         log('onAuthSuccess');
