@@ -44,17 +44,26 @@ namespace dotnet_sso_wpf_probe
 
             var scopes = new[] { "User.Read" };
 
-            BrokerOptions options = new BrokerOptions(BrokerOptions.OperatingSystems.Windows);
-            options.Title = ".NET SSO WPF Probe";
+            var brokerOptions = new BrokerOptions(BrokerOptions.OperatingSystems.Windows)
+            {
+                Title = "SSO WPF Probe"
+            };
+
+            var applicationOptions = new PublicClientApplicationOptions
+            {
+                TenantId = "TODO",
+                ClientId = clientId
+            };
 
             var wih = new System.Windows.Interop.WindowInteropHelper(this);
             var hWnd = wih.Handle;
 
             IPublicClientApplication app =
-                PublicClientApplicationBuilder.Create(clientId)
+                PublicClientApplicationBuilder
+                    .CreateWithApplicationOptions(applicationOptions)
                     .WithDefaultRedirectUri()
                     .WithParentActivityOrWindow(() => hWnd)
-                    .WithBroker(options)
+                    .WithBroker(brokerOptions)
                     .Build();
 
             AuthenticationResult result = null;
