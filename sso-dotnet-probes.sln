@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dotnet-sso-web-probe", "dotnet-sso-web-probe\dotnet-sso-web-probe.csproj", "{F4720912-4AFF-4320-9EBF-BD11B4743B12}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "web-probe", "web-probe\web-probe.csproj", "{F4720912-4AFF-4320-9EBF-BD11B4743B12}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dotnet-sso-wpf-probe", "dotnet-sso-wpf-probe\dotnet-sso-wpf-probe.csproj", "{20275440-835D-4473-B3C8-ED2CD2B264F5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wpf-probe", "wpf-probe\wpf-probe.csproj", "{20275440-835D-4473-B3C8-ED2CD2B264F5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
