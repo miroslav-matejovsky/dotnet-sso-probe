@@ -49,9 +49,15 @@ namespace dotnet_sso_wpf_probe
                 Title = "SSO WPF Probe"
             };
 
+            // Read tenant ID from the UI; if empty, leave it null so MSAL uses the default/common tenant behaviour
+            var tenantIdInput = TenantIdTextBox.Text?.Trim();
+            string tenantId = string.IsNullOrWhiteSpace(tenantIdInput) ? null : tenantIdInput;
+
+            Log.Debug("Using TenantId: {TenantId}", tenantId ?? "(default)");
+
             var applicationOptions = new PublicClientApplicationOptions
             {
-                TenantId = "TODO",
+                TenantId = tenantId,
                 ClientId = clientId
             };
 

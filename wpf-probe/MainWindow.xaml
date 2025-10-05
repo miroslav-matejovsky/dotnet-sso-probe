@@ -12,6 +12,8 @@
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal" Grid.Row="0" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0,0,8" >
+            <TextBlock Text="Tenant ID:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBox x:Name="TenantIdTextBox" Width="220" Height="24" Margin="0,0,12,0" ToolTip="Optional - leave empty to use default/common tenant" />
             <TextBlock Text="Client ID:" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <TextBox x:Name="ClientIdTextBox" Width="320" Height="24" Margin="0,0,12,0" Text="YOUR_CLIENT_ID" />
             <Button x:Name="LoginButton" Width="80" Height="28" Margin="0,0,8,0" Click="LoginButton_Click">Login</Button>
