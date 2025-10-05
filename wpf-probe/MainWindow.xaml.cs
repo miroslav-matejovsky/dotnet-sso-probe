@@ -42,7 +42,7 @@ namespace dotnet_sso_wpf_probe
                 return;
             }
 
-            var scopes = new[] { "User.Read" };
+            var acquireScopes = new[] { "User.Read" };
 
             var brokerOptions = new BrokerOptions(BrokerOptions.OperatingSystems.Windows)
             {
@@ -82,12 +82,12 @@ namespace dotnet_sso_wpf_probe
             {
                 if (existingAccount != null)
                 {
-                    result = await app.AcquireTokenSilent(scopes, existingAccount).ExecuteAsync();
+                    result = await app.AcquireTokenSilent(acquireScopes, existingAccount).ExecuteAsync();
                 }
                 // Next, try to sign in silently with the account that the user is signed into Windows
                 else
                 {
-                    result = await app.AcquireTokenSilent(scopes, PublicClientApplication.OperatingSystemAccount)
+                    result = await app.AcquireTokenSilent(acquireScopes, PublicClientApplication.OperatingSystemAccount)
                         .ExecuteAsync();
                 }
             }
@@ -96,7 +96,7 @@ namespace dotnet_sso_wpf_probe
             {
                 try
                 {
-                    result = await app.AcquireTokenInteractive(scopes).ExecuteAsync();
+                    result = await app.AcquireTokenInteractive(acquireScopes).ExecuteAsync();
                 }
                 catch (Exception iex)
                 {
@@ -110,6 +110,20 @@ namespace dotnet_sso_wpf_probe
                 Log.Error("Authentication failed: {Error}", ex.Message);
                 StatusTextBlock.Text = "Authentication failed";
                 return;
+            }
+
+            // Log token info for successful login. Avoid logging the raw token value; log length instead.
+            if (result != null)
+            {
+                var username = result.Account?.Username ?? "(unknown)";
+                var homeAccountId = result.Account?.HomeAccountId?.Identifier ?? "(unknown)";
+                var expiresOn = result.ExpiresOn;
+                var receivedScopes = result.Scopes != null ? string.Join(" ", result.Scopes) : "(none)";
+                var accessTokenLength = result.AccessToken?.Length ?? 0;
+                var hasIdToken = !string.IsNullOrEmpty(result.IdToken);
+
+                Log.Information("Authentication succeeded. Username: {Username}, HomeAccountId: {HomeAccountId}, ExpiresOn: {ExpiresOn:u}, Scopes: {Scopes}, AccessTokenLength: {AccessTokenLength}, HasIdToken: {HasIdToken}",
+                    username, homeAccountId, expiresOn, receivedScopes, accessTokenLength, hasIdToken);
             }
 
             StatusTextBlock.Text = "Logged in";
