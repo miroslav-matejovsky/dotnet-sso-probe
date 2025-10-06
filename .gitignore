@@ -5,3 +5,9 @@ obj/
 riderModule.iml
 /_ReSharper.Caches/
 *.sln.DotSettings.user
+
+# mounted keycloak volumes
+/keycloak/data/*
+!/keycloak/data/.gitkeep
+/keycloak/logs/*
+!keycloak/logs/.gitkeep

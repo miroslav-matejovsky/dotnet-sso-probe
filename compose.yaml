@@ -1,11 +1,13 @@
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.4.0
-    command: start-dev
+    command: start-dev --log="console,file" --log-console-level=info --log-file="/opt/keycloak/logs/keycloak.log"
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_LOG_LEVEL: DEBUG
     ports:
       - "8080:8080"
     volumes:
-      - ./keycloak-data:/opt/keycloak/data/h2
+      - ./keycloak/data:/opt/keycloak/data/h2
+      - ./keycloak/logs:/opt/keycloak/logs
