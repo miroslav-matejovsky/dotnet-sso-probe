@@ -18,7 +18,8 @@ public partial class MainWindow : Window
         // Configure Serilog to write to the console
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
-            .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.Console(
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         // Redirect Console output to the UI textbox so Serilog Console sink appears in the TextBox
@@ -45,7 +46,8 @@ public partial class MainWindow : Window
             var accessTokenLength = result.AccessToken?.Length ?? 0;
             var hasIdToken = !string.IsNullOrEmpty(result.IdToken);
 
-            Log.Information("Authentication succeeded. Username: {Username}, HomeAccountId: {HomeAccountId}, ExpiresOn: {ExpiresOn:u}, Scopes: {Scopes}, AccessTokenLength: {AccessTokenLength}, HasIdToken: {HasIdToken}",
+            Log.Information(
+                "Authentication succeeded. Username: {Username}, HomeAccountId: {HomeAccountId}, ExpiresOn: {ExpiresOn:u}, Scopes: {Scopes}, AccessTokenLength: {AccessTokenLength}, HasIdToken: {HasIdToken}",
                 username, homeAccountId, expiresOn, receivedScopes, accessTokenLength, hasIdToken);
         }
 
@@ -66,7 +68,7 @@ public partial class MainWindow : Window
 
     private async Task<AuthenticationResult?> AuthenticateUserViaEntraId()
     {
-                var clientId = ClientIdTextBox.Text?.Trim();
+        var clientId = ClientIdTextBox.Text?.Trim();
         if (string.IsNullOrEmpty(clientId))
         {
             Log.Error("Client ID is empty");
@@ -142,6 +144,100 @@ public partial class MainWindow : Window
             StatusTextBlock.Text = "Authentication failed";
             return null;
         }
+
         return result;
+    }
+
+    private async Task<AuthenticationResult?> ExchangeTokenWithKeycloak(AuthenticationResult entraIdResult)
+    {
+        if (string.IsNullOrEmpty(entraIdResult.AccessToken))
+        {
+            Log.Error("No EntraId access token available for exchange");
+            StatusTextBlock.Text = "No EntraId token";
+            return null;
+        }
+
+        var subjectToken = entraIdResult.AccessToken;
+
+        var keycloakEndpoint = Environment.GetEnvironmentVariable("KEYCLOAK_TOKEN_ENDPOINT")
+                               ?? "http://localhost:8080/realms/sso-probe/protocol/openid-connect/token";
+        var clientId = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID");
+
+        if (string.IsNullOrEmpty(clientId))
+        {
+            Log.Error("Keycloak client id not configured (env KEYCLOAK_CLIENT_ID)");
+            StatusTextBlock.Text = "Keycloak client id not configured";
+            return null;
+        }
+
+        try
+        {
+            using var http = new System.Net.Http.HttpClient();
+
+            var form = new List<KeyValuePair<string, string>>
+            {
+                new("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
+                new("subject_token", subjectToken),
+                new("subject_token_type", "urn:ietf:params:oauth:token-type:access_token"),
+                new("client_id", clientId),
+                new("scope", "openid")
+            };
+
+            var content = new System.Net.Http.FormUrlEncodedContent(form);
+            Log.Debug("Posting token-exchange to Keycloak endpoint {Endpoint}", keycloakEndpoint);
+            var resp = await http.PostAsync(keycloakEndpoint, content);
+            var body = await resp.Content.ReadAsStringAsync();
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                Log.Error("Keycloak token exchange failed ({Status}): {Body}", (int)resp.StatusCode, body);
+                StatusTextBlock.Text = "Keycloak token exchange failed";
+                return null;
+            }
+
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            var root = doc.RootElement;
+
+            string? kcAccess =
+                root.TryGetProperty("access_token", out var at) && at.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? at.GetString()
+                    : null;
+            string? kcIdToken =
+                root.TryGetProperty("id_token", out var it) && it.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? it.GetString()
+                    : null;
+            int expiresIn = 0;
+            if (root.TryGetProperty("expires_in", out var ei))
+            {
+                if (ei.ValueKind == System.Text.Json.JsonValueKind.Number && ei.TryGetInt32(out var val))
+                {
+                    expiresIn = val;
+                }
+                else
+                {
+                    int.TryParse(ei.GetString(), out expiresIn);
+                }
+            }
+
+            string? scope =
+                root.TryGetProperty("scope", out var sc) && sc.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? sc.GetString()
+                    : null;
+
+            Log.Information(
+                "Keycloak exchange succeeded. AccessTokenLength: {Len}, HasIdToken: {HasId}, ExpiresIn: {Expires}, Scope: {Scope}",
+                kcAccess?.Length ?? 0, !string.IsNullOrEmpty(kcIdToken), expiresIn, scope ?? "(none)");
+
+            StatusTextBlock.Text = "Keycloak token exchange succeeded";
+
+            // Note: MSAL's AuthenticationResult cannot be constructed here; return null after performing the exchange.
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Exception during Keycloak token exchange: {Error}", ex.Message);
+            StatusTextBlock.Text = "Token exchange error";
+            return null;
+        }
     }
 }
