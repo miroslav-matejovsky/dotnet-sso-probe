@@ -36,22 +36,28 @@ public partial class MainWindow : Window
         Log.Information("Login clicked");
 
         var result = await AuthenticateUserViaEntraId();
-        // Log token info for successful login. Avoid logging the raw token value; log length instead.
-        if (result != null)
+        if (result == null)
         {
-            var username = result.Account?.Username ?? "(unknown)";
-            var homeAccountId = result.Account?.HomeAccountId?.Identifier ?? "(unknown)";
-            var expiresOn = result.ExpiresOn;
-            var receivedScopes = result.Scopes != null ? string.Join(" ", result.Scopes) : "(none)";
-            var accessTokenLength = result.AccessToken?.Length ?? 0;
-            var hasIdToken = !string.IsNullOrEmpty(result.IdToken);
-
-            Log.Information(
-                "Authentication succeeded. Username: {Username}, HomeAccountId: {HomeAccountId}, ExpiresOn: {ExpiresOn:u}, Scopes: {Scopes}, AccessTokenLength: {AccessTokenLength}, HasIdToken: {HasIdToken}",
-                username, homeAccountId, expiresOn, receivedScopes, accessTokenLength, hasIdToken);
+            Log.Information("No EntraId token obtained");
+            return;
         }
-
         StatusTextBlock.Text = "Logged in";
+
+        // Log token info for successful login. Avoid logging the raw token value; log length instead.
+        var username = result.Account?.Username ?? "(unknown)";
+        var homeAccountId = result.Account?.HomeAccountId?.Identifier ?? "(unknown)";
+        var expiresOn = result.ExpiresOn;
+        var receivedScopes = result.Scopes != null ? string.Join(" ", result.Scopes) : "(none)";
+        var accessTokenLength = result.AccessToken?.Length ?? 0;
+        var hasIdToken = !string.IsNullOrEmpty(result.IdToken);
+
+        Log.Information(
+            "Authentication succeeded. Username: {Username}, HomeAccountId: {HomeAccountId}, ExpiresOn: {ExpiresOn:u}, Scopes: {Scopes}, AccessTokenLength: {AccessTokenLength}, HasIdToken: {HasIdToken}",
+            username, homeAccountId, expiresOn, receivedScopes, accessTokenLength, hasIdToken);
+        
+        // Now perform token exchange with Keycloak
+        await ExchangeTokenWithKeycloak(result);
+        
     }
 
     private void LogoutButton_Click(object sender, RoutedEventArgs e)
@@ -150,18 +156,18 @@ public partial class MainWindow : Window
 
     private async Task<AuthenticationResult?> ExchangeTokenWithKeycloak(AuthenticationResult entraIdResult)
     {
-        if (string.IsNullOrEmpty(entraIdResult.AccessToken))
+        var subjectToken = entraIdResult.AccessToken;
+
+        if (string.IsNullOrEmpty(subjectToken))
         {
             Log.Error("No EntraId access token available for exchange");
             StatusTextBlock.Text = "No EntraId token";
             return null;
         }
-
-        var subjectToken = entraIdResult.AccessToken;
-
         var keycloakEndpoint = Environment.GetEnvironmentVariable("KEYCLOAK_TOKEN_ENDPOINT")
                                ?? "http://localhost:8080/realms/sso-probe/protocol/openid-connect/token";
         var clientId = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID");
+        var clientSecret = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET");
 
         if (string.IsNullOrEmpty(clientId))
         {
@@ -170,17 +176,28 @@ public partial class MainWindow : Window
             return null;
         }
 
+        if (string.IsNullOrEmpty(clientSecret))
+        {
+            Log.Error("Keycloak client secret not configured (env KEYCLOAK_CLIENT_SECRET)");
+            StatusTextBlock.Text = "Keycloak client secret not configured";
+            return null;
+        }
+
         try
         {
             using var http = new System.Net.Http.HttpClient();
-
+            Log.Information("Exchanging token with Keycloak at {Endpoint} for client {ClientId}", keycloakEndpoint, clientId);
             var form = new List<KeyValuePair<string, string>>
             {
                 new("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
                 new("subject_token", subjectToken),
+                // new("subject_token_type", "urn:ietf:params:oauth:token-type:id_token"),
                 new("subject_token_type", "urn:ietf:params:oauth:token-type:access_token"),
+                new("subject_issues", "entraid-saml"),
+                // new("requested_token_type", "urn:ietf:params:oauth:token-type:id_token"),
                 new("client_id", clientId),
-                new("scope", "openid")
+                new("client_secret", clientSecret),
+                new("scope", "openid"),
             };
 
             var content = new System.Net.Http.FormUrlEncodedContent(form);

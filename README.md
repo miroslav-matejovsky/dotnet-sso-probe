@@ -7,9 +7,8 @@ Web and WPF applications demonstrating Single Sign-On (SSO) with Keycloak.
 Start keycloak using Podman or Docker using `podman compose up` or `docker compose up`.
 
 1. In Keycloak, create a new realm named `sso-probe`.
-2. Create a new client named `sso-dotnet-web-probe` with default settings.
-3. Set the Valid Redirect URIs to `http://localhost:5000/*`.
-4. Create test user in the `sso-probe` realm for example, username: `test`, password: `test`.
+2. On realm settings -> User Profile remove first name and last name required attributes. (This is optional but simplifies user creation.)
+3. Create test user in the `sso-probe` realm for example, username: `test`, password: `test`.
 
 ### Entra ID SAML Identity Provider
 
@@ -38,7 +37,13 @@ Then, create a new mapper in the `entraid-saml` identity provider:
 
 A simple web application to demonstrate SSO with Keycloak.
 
-To publish the web application, run:
+### Keycloak client
+
+1. Create a new client named `sso-dotnet-web-probe` with default settings.
+2. Set the Valid Redirect URIs to `http://localhost:5000/*`.
+3. Set the Web Origins to `http://localhost:5000`.
+
+### Publishing
 
 ```powershell
 psake PublishWeb
@@ -48,8 +53,23 @@ psake PublishWeb
 
 A simple WPF application to demonstrate SSO with Keycloak.
 
-To publish the WPF application, run:
+### Keycloak client
+
+For token exchange to work, the client must be configured with authentication and `Standard Token Exchange` enabled.
+
+1. Create a new client named `sso-dotnet-wpf-probe` with `Client Authentication` enabled.
+2. Enable `Client Authentication` so that `Standard Token Exchange` can be used.
+3. Check `Standard Token Exchange` in the `Authentication Flow` section.
+
+!!! SAML identity providers are not supported at this time in Keycloak for token exchange !!!
+
+### Publishing
 
 ```powershell
 psake PublishWpf
 ```
+
+## Links
+
+- <https://www.tymiq.com/post/seamless-sso-for-desktop-applications>
+- [External to Internal Keycloak Token Exchange](https://www.keycloak.org/securing-apps/token-exchange#_external-token-to-internal-token-exchange)
