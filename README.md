@@ -15,11 +15,24 @@ Start keycloak using Podman or Docker using `podman compose up` or `docker compo
 
 1. Create a new Entra ID Enterprise Application in the Azure portal.
 2. Configure SAML-based SSO for the application.
-3. Copy the `API Federation Metadata URL` from the `Single sign-on` SAML configuration.
-4. In Keycloak, navigate to the `sso-probe` realm.
-5. Go to Identity Providers and select `SAML v2.0`.
-6. Set the Alias to `entraid-saml`.
+3. Set the `Identifier (Entity ID)` to `http://localhost:8080/realms/sso-probe`
+4. Set the `Reply URL (Assertion Consumer Service URL)` to `http://localhost:8080/realms/sso-probe/broker/entraid-saml/endpoint`
+5. Copy the `API Federation Metadata URL` from the `Single sign-on` SAML configuration.
+6. In Keycloak, navigate to the `sso-probe` realm.
+7. Go to Identity Providers and select `SAML v2.0`.
+8. Set the Alias to `entraid-saml`.
+9. Paste the `API Federation Metadata URL` into the `Import from URL` (you should see green dot-check icon).
+10. Click on `Add` and then `Save` to create the identity provider.
 
+### Mapping SAML to Keycloak Attributes
+
+First you will probably see some identifier mapped from Entra.
+Search this identifier in the keycloak debug logs and you should find SAML xml response where you can find received claims.
+
+Then, create a new mapper in the `entraid-saml` identity provider:
+
+1. username: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name`
+2. email: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name`
 
 ## web-probe
 
