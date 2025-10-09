@@ -42,22 +42,29 @@ public partial class MainWindow : Window
             return;
         }
         StatusTextBlock.Text = "Logged in";
+        // Put token to cache
+        
 
         // Log token info for successful login. Avoid logging the raw token value; log length instead.
+        // var type = result.
         var username = result.Account?.Username ?? "(unknown)";
         var homeAccountId = result.Account?.HomeAccountId?.Identifier ?? "(unknown)";
         var expiresOn = result.ExpiresOn;
         var receivedScopes = result.Scopes != null ? string.Join(" ", result.Scopes) : "(none)";
         var accessTokenLength = result.AccessToken?.Length ?? 0;
+        var accessTokenStart = result.AccessToken?[..50];
         var hasIdToken = !string.IsNullOrEmpty(result.IdToken);
 
-        Log.Information(
-            "Authentication succeeded. Username: {Username}, HomeAccountId: {HomeAccountId}, ExpiresOn: {ExpiresOn:u}, Scopes: {Scopes}, AccessTokenLength: {AccessTokenLength}, HasIdToken: {HasIdToken}",
-            username, homeAccountId, expiresOn, receivedScopes, accessTokenLength, hasIdToken);
-        
+        Log.Information("Authentication succeeded.");
+        Log.Information("Username: {Username}", username);
+        Log.Information("HomeAccountId: {HomeAccountId}", homeAccountId);
+        Log.Information("ExpiresOn: {ExpiresOn:u}", expiresOn);
+        Log.Information("Scopes: {Scopes}", receivedScopes);
+        Log.Information("AccessTokenLength: {AccessTokenLength}", accessTokenLength);
+        Log.Information("HasIdToken: {HasIdToken}", hasIdToken);
+        Log.Information("Raw AccessToken (first 50 chars): {AccessTokenStart}...", accessTokenStart);
         // Now perform token exchange with Keycloak
         await ExchangeTokenWithKeycloak(result);
-        
     }
 
     private void LogoutButton_Click(object sender, RoutedEventArgs e)
@@ -121,11 +128,13 @@ public partial class MainWindow : Window
         {
             if (existingAccount != null)
             {
+                Log.Debug("Found existing account in cache: {Username}, {HomeAccountId}", existingAccount.Username, existingAccount.HomeAccountId);
                 result = await app.AcquireTokenSilent(acquireScopes, existingAccount).ExecuteAsync();
             }
             // Next, try to sign in silently with the account that the user is signed into Windows
             else
             {
+                Log.Debug("No existing account in cache, trying OS account");
                 result = await app.AcquireTokenSilent(acquireScopes, PublicClientApplication.OperatingSystemAccount)
                     .ExecuteAsync();
             }
@@ -133,6 +142,8 @@ public partial class MainWindow : Window
         // Can't get a token silently, go interactive
         catch (MsalUiRequiredException ex)
         {
+            Log.Warning("Silent token acquisition failed: {Error}", ex.Message);
+            Log.Information("Falling back to interactive authentication");
             try
             {
                 result = await app.AcquireTokenInteractive(acquireScopes).ExecuteAsync();
@@ -156,6 +167,7 @@ public partial class MainWindow : Window
 
     private async Task<AuthenticationResult?> ExchangeTokenWithKeycloak(AuthenticationResult entraIdResult)
     {
+        Log.Information("Starting token exchange with Keycloak");
         var subjectToken = entraIdResult.AccessToken;
 
         if (string.IsNullOrEmpty(subjectToken))
