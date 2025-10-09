@@ -73,3 +73,4 @@ psake PublishWpf
 
 - <https://www.tymiq.com/post/seamless-sso-for-desktop-applications>
 - [External to Internal Keycloak Token Exchange](https://www.keycloak.org/securing-apps/token-exchange#_external-token-to-internal-token-exchange)
+- [Tutorial: Authenticate users to your WPF desktop application](https://learn.microsoft.com/en-us/entra/identity-platform/tutorial-desktop-wpf-dotnet-sign-in-build-app)
